@@ -57,6 +57,8 @@ type dumpState struct {
 	cs               *ConfigState
 }
 
+var indentStartStr = "\x1b[34m"
+
 // indent performs indentation according to the depth level and cs.Indent
 // option.
 func (d *dumpState) indent() {
@@ -64,7 +66,13 @@ func (d *dumpState) indent() {
 		d.ignoreNextIndent = false
 		return
 	}
+	if d.cs.HighlightValues {
+		d.w.Write([]byte(indentStartStr))
+	}
 	d.w.Write(bytes.Repeat([]byte(d.cs.Indent), d.depth))
+	if d.cs.HighlightValues {
+		d.w.Write(highlightEndBytes)
+	}
 }
 
 // unpackValue returns values inside of non-nil interfaces when possible.
@@ -226,9 +234,12 @@ func (d *dumpState) dumpSlice(v reflect.Value) {
 	// Hexdump the entire slice as needed.
 	if doHexDump {
 		indent := strings.Repeat(d.cs.Indent, d.depth)
+		if d.cs.HighlightValues {
+			indent = indentStartStr + indent + string(highlightEndBytes)
+		}
 		str := indent + hex.Dump(buf)
 		str = strings.Replace(str, "\n", "\n"+indent, -1)
-		str = strings.TrimRight(str, d.cs.Indent)
+		str = strings.TrimSuffix(str, indent)
 		d.w.Write([]byte(str))
 		return
 	}
